@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="ko" class="h-full bg-slate-50">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>전사 통합 물품재고 현황 대시보드</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
+        body {
+            font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+    </style>
+</head>
+<body class="h-full text-slate-800 flex flex-col md:flex-row overflow-hidden antialiased">
+
+    <!-- Sidebar -->
+    <aside class="w-full md:w-64 bg-slate-900 text-slate-300 flex-shrink-0 flex flex-col justify-between border-r border-slate-800">
+        <div>
+            <!-- Brand Logo -->
+            <div class="h-16 px-6 flex items-center justify-between border-b border-slate-800">
+                <div class="flex items-center gap-3">
+                    <div class="p-2 bg-blue-600 rounded-xl text-white shadow-lg shadow-blue-500/30">
+                        <i data-lucide="box" class="w-5 h-5"></i>
+                    </div>
+                    <div>
+                        <h1 class="font-bold text-base text-white leading-none">Smart Inventory</h1>
+                        <span class="text-xs text-slate-400 font-medium">재고통합관리 v2.4</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Navigation Links -->
+            <nav class="p-4 space-y-1 text-sm font-medium">
+                <a href="#" class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl bg-blue-600 text-white shadow-sm transition-all">
+                    <i data-lucide="layout-dashboard" class="w-4 h-4"></i>
+                    <span>종합 대시보드</span>
+                </a>
+                <a href="#inventory-list" class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl hover:bg-slate-800 hover:text-white transition-all text-slate-400">
+                    <i data-lucide="boxes" class="w-4 h-4"></i>
+                    <span>재고 목록 조회</span>
+                </a>
+                <a href="order.html" class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl hover:bg-slate-800 hover:text-white transition-all text-slate-400">
+                    <i data-lucide="alert-triangle" class="w-4 h-4 text-rose-400"></i>
+                    <span>긴급 발주 품목</span>
+                    <span class="ml-auto bg-rose-500/20 text-rose-400 text-xs px-2 py-0.5 rounded-full font-bold">10</span>
+                </a>
+                <a href="#dead-stock" class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl hover:bg-slate-800 hover:text-white transition-all text-slate-400">
+                    <i data-lucide="clock" class="w-4 h-4 text-amber-400"></i>
+                    <span>장기 미출고 악성재고</span>
+                    <span class="ml-auto bg-amber-500/20 text-amber-400 text-xs px-2 py-0.5 rounded-full font-bold">3</span>
+                </a>
+            </nav>
+        </div>
+
+        <!-- Sidebar Footer -->
+        <div class="p-4 border-t border-slate-800 text-xs text-slate-400 flex items-center justify-between">
+            <div class="flex items-center gap-2">
+                <div class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
+                <span>시스템 정상 가동 중</span>
+            </div>
+            <span class="text-slate-500">2026.10</span>
+        </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="flex-1 flex flex-col min-w-0 overflow-hidden bg-slate-50">
+        
+        <!-- Header -->
+        <header class="h-16 bg-white border-b border-slate-200/80 px-6 flex items-center justify-between flex-shrink-0 z-10">
+            <div class="flex items-center gap-4">
+                <h2 class="text-lg font-bold text-slate-800">전사 재고통합 현황</h2>
+                <span class="hidden sm:inline-block px-2.5 py-0.5 rounded-full text-xs bg-slate-100 text-slate-600 font-medium border border-slate-200">
+                    실시간 동기화 완료
+                </span>
+            </div>
+
+            <!-- Header Right Utilities -->
+            <div class="flex items-center gap-3">
+                <div class="relative hidden sm:block">
+                    <i data-lucide="search" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                    <input type="text" id="globalSearch" onkeyup="filterItems()" placeholder="품목명 또는 코드 검색..." 
+                        class="pl-9 pr-4 py-1.5 text-sm bg-slate-100 border border-transparent rounded-lg focus:bg-white focus:border-blue-500 focus:outline-none w-60 transition-all">
+                </div>
+                <button onclick="exportToExcel()" class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition-all shadow-sm">
+                    <i data-lucide="download" class="w-3.5 h-3.5"></i>
+                    <span>엑셀 내보내기</span>
+                </button>
+                <div class="h-4 w-px bg-slate-200"></div>
+                <div class="flex items-center gap-2 pl-1">
+                    <div class="w-8 h-8 rounded-full bg-blue-100 text-blue-700 font-bold flex items-center justify-center text-xs">
+                        관리
+                    </div>
+                    <span class="text-sm font-medium text-slate-700 hidden md:inline">최고관리자</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Scrollable Main Container -->
+        <div class="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar">
+
+            <!-- KPI Metric Cards Grid -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+                
+                <!-- Card 1: 총 관리 품목 수 -->
+                <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-md transition-all group">
+                    <div class="flex items-center justify-between mb-3">
+                        <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider">총 관리 품목 수</span>
+                        <div class="p-2.5 bg-blue-50 text-blue-600 rounded-xl group-hover:scale-110 transition-transform">
+                            <i data-lucide="package" class="w-5 h-5"></i>
+                        </div>
+                    </div>
+                    <div class="flex items-baseline justify-between">
+                        <div class="text-3xl font-extrabold text-slate-900" id="totalItemsCount">30</div>
+                        <span class="text-xs font-medium text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full flex items-center gap-0.5">
+                            <i data-lucide="trending-up" class="w-3 h-3"></i> 100% 정상등록
+                        </span>
+                    </div>
+                    <p class="text-xs text-slate-400 mt-2">전사 4개 카테고리 관리 중</p>
+                </div>
+
+                <!-- Card 2: 총 재고 자산 평가액 -->
+                <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-md transition-all group">
+                    <div class="flex items-center justify-between mb-3">
+                        <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider">총 재고 자산 평가액</span>
+                        <div class="p-2.5 bg-emerald-50 text-emerald-600 rounded-xl group-hover:scale-110 transition-transform">
+                            <i data-lucide="coins" class="w-5 h-5"></i>
+                        </div>
+                    </div>
+                    <div class="flex items-baseline justify-between">
+                        <div class="text-3xl font-extrabold text-slate-900">4.80<span class="text-lg font-bold text-slate-600">억원</span></div>
+                        <span class="text-xs font-medium text-slate-500">480,215,000원</span>
+                    </div>
+                    <p class="text-xs text-slate-400 mt-2">단가 × 보유 수량 합산 기준</p>
+                </div>
+
+                <!-- Card 3: 긴급 발주 필요 품목 수 -->
+                <a href="order.html" class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-md transition-all group border-l-4 border-l-rose-500 block cursor-pointer">
+                    <div class="flex items-center justify-between mb-3">
+                        <span class="text-xs font-semibold text-rose-600 uppercase tracking-wider">긴급 발주 필요 품목</span>
+                        <div class="p-2.5 bg-rose-50 text-rose-600 rounded-xl group-hover:scale-110 transition-transform">
+                            <i data-lucide="alert-octagon" class="w-5 h-5"></i>
+                        </div>
+                    </div>
+                    <div class="flex items-baseline justify-between">
+                        <div class="text-3xl font-extrabold text-rose-600" id="urgentItemsCount">10<span class="text-lg font-bold text-rose-400">개</span></div>
+                        <span class="text-xs font-bold text-rose-600 bg-rose-50 px-2 py-0.5 rounded-full animate-pulse flex items-center gap-1">
+                            페이지 이동 <i data-lucide="chevron-right" class="w-3 h-3"></i>
+                        </span>
+                    </div>
+                    <p class="text-xs text-rose-400 mt-2">클릭 시 긴급 발주 신청 페이지(order.html)로 이동</p>
+                </a>
+
+                <!-- Card 4: 장기 미출고 악성 재고 -->
+                <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-md transition-all group border-l-4 border-l-amber-500">
+                    <div class="flex items-center justify-between mb-3">
+                        <span class="text-xs font-semibold text-amber-600 uppercase tracking-wider">장기 미출고 악성 재고</span>
+                        <div class="p-2.5 bg-amber-50 text-amber-600 rounded-xl group-hover:scale-110 transition-transform">
+                            <i data-lucide="archive" class="w-5 h-5"></i>
+                        </div>
+                    </div>
+                    <div class="flex items-baseline justify-between">
+                        <div class="text-3xl font-extrabold text-amber-600" id="deadStockCount">3<span class="text-lg font-bold text-amber-400">개</span></div>
+                        <span class="text-xs font-medium text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full">
+                            소진/처분 필요
+                        </span>
+                    </div>
+                    <p class="text-xs text-amber-500 mt-2">구형 단종 및 회전율 침체 품목</p>
+                </div>
+
+            </div>
+
+            <!-- Chart & Analytics Section -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                
+                <!-- Doughnut Chart: Category Asset Allocation -->
+                <div class="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm flex flex-col justify-between">
+                    <div>
+                        <div class="flex items-center justify-between mb-4">
+                            <div>
+                                <h3 class="text-base font-bold text-slate-800">카테고리별 자산 점유율</h3>
+                                <p class="text-xs text-slate-400">클릭 시 해당 카테고리로 세부 필터링</p>
+                            </div>
+                            <span class="text-xs text-blue-600 font-semibold bg-blue-50 px-2 py-1 rounded-lg">인터랙티브 차트</span>
+                        </div>
+                        <div class="relative h-56 flex items-center justify-center cursor-pointer">
+                            <canvas id="categoryChart"></canvas>
+                        </div>
+                    </div>
+                    <div id="chartLegend" class="grid grid-cols-2 gap-2 pt-4 border-t border-slate-100 text-xs">
+                        <!-- Dynamic Legend Inserted by JS -->
+                    </div>
+                </div>
+
+                <!-- Bar Chart: Item-level Inventory vs Safety Stock Comparison -->
+                <div class="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm lg:col-span-2 flex flex-col justify-between">
+                    <div>
+                        <div class="flex items-center justify-between mb-4">
+                            <div>
+                                <h3 class="text-base font-bold text-slate-800" id="barChartTitle">품목별 현재재고 vs 안전재고 비교</h3>
+                                <p class="text-xs text-slate-400" id="barChartSubtitle">카테고리를 선택하여 품목별 재고 수준을 세부 비교하세요</p>
+                            </div>
+                            <div class="flex items-center gap-3 text-xs">
+                                <span class="flex items-center gap-1"><span class="w-3 h-3 rounded-sm bg-blue-600 inline-block"></span> 현재재고</span>
+                                <span class="flex items-center gap-1"><span class="w-3 h-3 rounded-sm bg-slate-300 inline-block"></span> 적정 안전재고</span>
+                            </div>
+                        </div>
+                        <div class="h-60">
+                            <canvas id="stockBarChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Inventory Table Section -->
+            <div id="inventory-list" class="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
+                
+                <!-- Table Header & Controls -->
+                <div class="p-5 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div>
+                        <h3 class="text-base font-bold text-slate-800">전사 물품 재고 상세 현황</h3>
+                        <p class="text-xs text-slate-400">필터 및 검색을 사용하여 실시간 재고를 관리하세요.</p>
+                    </div>
+
+                    <!-- Category & Status Filters -->
+                    <div class="flex flex-wrap items-center gap-2">
+                        <select id="categoryFilter" onchange="filterItems()" class="text-xs bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-slate-700 font-medium focus:outline-none focus:border-blue-500">
+                            <option value="ALL">전체 카테고리</option>
+                            <option value="전자기기">전자기기</option>
+                            <option value="사무용품">사무용품</option>
+                            <option value="소모품">소모품</option>
+                            <option value="물류자재">물류자재</option>
+                        </select>
+
+                        <select id="statusFilter" onchange="filterItems()" class="text-xs bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-slate-700 font-medium focus:outline-none focus:border-blue-500">
+                            <option value="ALL">전체 상태 보기</option>
+                            <option value="URGENT">⚠️ 긴급 발주 필요만</option>
+                            <option value="NORMAL">✅ 정상 보유</option>
+                            <option value="DEAD">⏳ 장기 미출고/악성</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Table Content -->
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse text-xs">
+                        <thead>
+                            <tr class="bg-slate-50/80 text-slate-500 border-b border-slate-200/80 font-semibold uppercase tracking-wider">
+                                <th class="py-3 px-4">코드</th>
+                                <th class="py-3 px-4">분류</th>
+                                <th class="py-3 px-4">품목명</th>
+                                <th class="py-3 px-4 text-right">단가(원)</th>
+                                <th class="py-3 px-4 text-center">보유수량</th>
+                                <th class="py-3 px-4 text-center">안전재고</th>
+                                <th class="py-3 px-4 text-right">평가액(원)</th>
+                                <th class="py-3 px-4 text-center">재고상태</th>
+                                <th class="py-3 px-4 text-center">관리</th>
+                            </tr>
+                        </thead>
+                        <tbody id="inventoryTableBody" class="divide-y divide-slate-100 text-slate-700">
+                            <!-- Dynamic Rows render via JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Table Footer Pagination/Summary -->
+                <div class="p-4 bg-slate-50/50 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+                    <span id="filteredCountInfo">총 30개 항목 중 30개 표시 중</span>
+                    <span>단가 및 평가액은 부가세 포함 금액 기준</span>
+                </div>
+
+            </div>
+
+        </div>
+    </main>
+
+    <!-- Detail View Modal -->
+    <div id="itemModal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm hidden items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-2xl shadow-xl border border-slate-200 max-w-lg w-full overflow-hidden transform transition-all">
+            <div class="p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+                <div class="flex items-center gap-2">
+                    <span id="modalCode" class="text-xs font-mono font-bold bg-slate-200 text-slate-700 px-2 py-0.5 rounded"></span>
+                    <h3 id="modalName" class="text-base font-bold text-slate-800"></h3>
+                </div>
+                <button onclick="closeModal()" class="text-slate-400 hover:text-slate-600 rounded-lg p-1 hover:bg-slate-200/60 transition-all">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+            
+            <div class="p-6 space-y-4 text-xs">
+                <div class="grid grid-cols-2 gap-4 bg-slate-50 p-4 rounded-xl border border-slate-100">
+                    <div>
+                        <span class="text-slate-400 block mb-1">카테고리</span>
+                        <span id="modalCategory" class="font-semibold text-slate-800 text-sm"></span>
+                    </div>
+                    <div>
+                        <span class="text-slate-400 block mb-1">재고 상태</span>
+                        <span id="modalStatusBadge"></span>
+                    </div>
+                    <div>
+                        <span class="text-slate-400 block mb-1">개당 단가</span>
+                        <span id="modalPrice" class="font-semibold text-slate-800 text-sm"></span>
+                    </div>
+                    <div>
+                        <span class="text-slate-400 block mb-1">총 평가 금액</span>
+                        <span id="modalTotalVal" class="font-bold text-blue-600 text-sm"></span>
+                    </div>
+                </div>
+
+                <div class="space-y-2">
+                    <div class="flex justify-between font-medium text-slate-600">
+                        <span>재고 충족률</span>
+                        <span id="modalRatioText"></span>
+                    </div>
+                    <div class="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
+                        <div id="modalProgressBar" class="h-full rounded-full transition-all duration-500"></div>
+                    </div>
+                </div>
+
+                <div id="modalAlertBox" class="p-3 rounded-xl hidden">
+                    <!-- Dynamic Alert Message -->
+                </div>
+            </div>
+
+            <div class="p-4 bg-slate-50 border-t border-slate-100 flex justify-end gap-2">
+                <button onclick="closeModal()" class="px-4 py-2 bg-slate-200 text-slate-700 rounded-xl font-medium hover:bg-slate-300 transition-all">닫기</button>
+                <button onclick="triggerOrderNotice()" class="px-4 py-2 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 shadow-sm transition-all flex items-center gap-1.5">
+                    <i data-lucide="shopping-cart" class="w-3.5 h-3.5"></i>
+                    <span>발주 요청 생성</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Full dataset extracted and processed from Excel (통합_물품재고_현황_추가_2.xlsx)
+        const rawData = [
+            { id: 'ELE-001', category: '전자기기', name: '고성능 업무용 노트북 16인치', price: 1850000, qty: 45, safeQty: 30, isDead: false },
+            { id: 'ELE-002', category: '전자기기', name: '27인치 4K UHD 모니터', price: 420000, qty: 60, safeQty: 40, isDead: false },
+            { id: 'ELE-003', category: '전자기기', name: '무선 블루투스 헤드셋', price: 135000, qty: 12, safeQty: 25, isDead: false }, // Urgent
+            { id: 'ELE-004', category: '전자기기', name: '외장 SSD 1TB 휴대용', price: 145000, qty: 10, safeQty: 20, isDead: false },  // Urgent
+            { id: 'ELE-005', category: '전자기기', name: 'USB-C 멀티 허브 어댑터', price: 48000, qty: 85, safeQty: 50, isDead: false },
+            { id: 'ELE-006', category: '전자기기', name: '구형 VGA 케이블 (단종)', price: 12000, qty: 120, safeQty: 10, isDead: true },  // Dead stock
+            { id: 'ELE-007', category: '전자기기', name: '태블릿 PC 11인치', price: 890000, qty: 15, safeQty: 10, isDead: false },
+            { id: 'ELE-008', category: '전자기기', name: '프리미엄 웹캠 4K', price: 195000, qty: 8, safeQty: 15, isDead: false },   // Urgent
+
+            { id: 'OFF-001', category: '사무용품', name: '인체공학 사무용 의자', price: 320000, qty: 22, safeQty: 15, isDead: false },
+            { id: 'OFF-002', category: '사무용품', name: '전동 높낮이 조절 책상', price: 580000, qty: 14, safeQty: 10, isDead: false },
+            { id: 'OFF-003', category: '사무용품', name: 'A4 복사지 80g (5권/박스)', price: 28000, qty: 110, safeQty: 150, isDead: false }, // Urgent
+            { id: 'OFF-004', category: '사무용품', name: '무선 키보드 마우스 세트', price: 65000, qty: 23, safeQty: 30, isDead: false },  // Urgent
+            { id: 'OFF-005', category: '사무용품', name: '대용량 문서 파쇄기', price: 450000, qty: 5, safeQty: 3, isDead: false },
+            { id: 'OFF-006', category: '사무용품', name: '구형 유선 마우스(재고소진대상)', price: 9500, qty: 80, safeQty: 5, isDead: true }, // Dead stock
+            { id: 'OFF-007', category: '사무용품', name: 'LED 화이트보드 1200x900', price: 110000, qty: 7, safeQty: 10, isDead: false }, // Urgent
+
+            { id: 'CON-001', category: '소모품', name: '컬러 레이저 프린터 토너 (검정)', price: 135000, qty: 18, safeQty: 25, isDead: false }, // Urgent
+            { id: 'CON-002', category: '소모품', name: '컬러 레이저 프린터 토너 (파랑)', price: 135000, qty: 12, safeQty: 20, isDead: false }, // Urgent
+            { id: 'CON-003', category: '소모품', name: '손소독제 500ml (펌프형)', price: 6500, qty: 140, safeQty: 100, isDead: false },
+            { id: 'CON-004', category: '소모품', name: '종이컵 6.5온스 (1000개입)', price: 22000, qty: 25, safeQty: 40, isDead: false }, // Urgent
+            { id: 'CON-005', category: '소모품', name: '고급 원두커피 1kg', price: 34000, qty: 42, safeQty: 30, isDead: false },
+            { id: 'CON-006', category: '소모품', name: '구형 팩스 전용 감열지 roll', price: 4500, qty: 95, safeQty: 0, isDead: true },   // Dead stock
+            { id: 'CON-007', category: '소모품', name: '크린룸 위생 장갑 M (100매)', price: 15000, qty: 65, safeQty: 50, isDead: false },
+
+            { id: 'LOG-001', category: '물류자재', name: '파렛트 1100x1100 플라스틱', price: 42000, qty: 320, safeQty: 200, isDead: false },
+            { id: 'LOG-002', category: '물류자재', name: '포장용 테이프 (투명 50m)', price: 2100, qty: 450, safeQty: 300, isDead: false },
+            { id: 'LOG-003', category: '물류자재', name: '에어캡 에어롤 1000mm', price: 28000, qty: 18, safeQty: 35, isDead: false },  // Urgent
+            { id: 'LOG-004', category: '물류자재', name: '택배 택배상자 3호', price: 1200, qty: 1200, safeQty: 1000, isDead: false },
+            { id: 'LOG-005', category: '물류자재', name: '수동 핸드 자키 2.5톤', price: 380000, qty: 6, safeQty: 4, isDead: false },
+            { id: 'LOG-006', category: '물류자재', name: '스트레치 랩 (공업용 500mm)', price: 18500, qty: 110, safeQty: 80, isDead: false },
+            { id: 'LOG-007', category: '물류자재', name: '바코드 라벨지 100x150', price: 12500, qty: 85, safeQty: 60, isDead: false }
+        ];
+
+        function renderTable(items) {
+            const tbody = document.getElementById('inventoryTableBody');
+            tbody.innerHTML = '';
+
+            items.forEach(item => {
+                const totalValue = item.price * item.qty;
+                const isUrgent = item.qty < item.safeQty;
+                
+                let statusBadge = '';
+                if (item.isDead) {
+                    statusBadge = `<span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 border border-amber-200">⏳ 장기미출고/악성</span>`;
+                } else if (isUrgent) {
+                    statusBadge = `<span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-rose-100 text-rose-700 border border-rose-200 animate-pulse">⚠️ 발주 필요</span>`;
+                } else {
+                    statusBadge = `<span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-700 border border-emerald-200">✅ 정상 보유</span>`;
+                }
+
+                const row = document.createElement('tr');
+                row.className = 'hover:bg-slate-50/80 transition-colors cursor-pointer';
+                row.onclick = (e) => {
+                    if(!e.target.closest('button')) openModal(item);
+                };
+
+                row.innerHTML = `
+                    <td class="py-3.5 px-4 font-mono font-medium text-slate-500">${item.id}</td>
+                    <td class="py-3.5 px-4 font-medium text-slate-600">${item.category}</td>
+                    <td class="py-3.5 px-4 font-semibold text-slate-900">${item.name}</td>
+                    <td class="py-3.5 px-4 text-right font-mono">${item.price.toLocaleString()}</td>
+                    <td class="py-3.5 px-4 text-center font-bold ${isUrgent ? 'text-rose-600' : 'text-slate-800'}">${item.qty.toLocaleString()}</td>
+                    <td class="py-3.5 px-4 text-center font-mono text-slate-400">${item.safeQty.toLocaleString()}</td>
+                    <td class="py-3.5 px-4 text-right font-bold font-mono text-blue-600">${totalValue.toLocaleString()}</td>
+                    <td class="py-3.5 px-4 text-center">${statusBadge}</td>
+                    <td class="py-3.5 px-4 text-center">
+                        <button onclick="openModalById('${item.id}')" class="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg font-medium text-xs transition-all">
+                            상세
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+
+            document.getElementById('filteredCountInfo').innerText = `총 ${rawData.length}개 항목 중 ${items.length}개 표시 중`;
+        }
+        let categoryChartInstance = null;
+        let stockBarChartInstance = null;
+
+        function filterItems(selectedCategoryOverride = null) {
+            let category = document.getElementById('categoryFilter').value;
+            if (selectedCategoryOverride !== null) {
+                category = selectedCategoryOverride;
+                document.getElementById('categoryFilter').value = category;
+            }
+
+            const status = document.getElementById('statusFilter').value;
+            const query = document.getElementById('globalSearch').value.toLowerCase().trim();
+
+            const filtered = rawData.filter(item => {
+                const matchesCat = (category === 'ALL' || item.category === category);
+                
+                let matchesStatus = true;
+                if (status === 'URGENT') matchesStatus = (item.qty < item.safeQty && !item.isDead);
+                else if (status === 'NORMAL') matchesStatus = (item.qty >= item.safeQty && !item.isDead);
+                else if (status === 'DEAD') matchesStatus = item.isDead;
+
+                const matchesQuery = item.name.toLowerCase().includes(query) || item.id.toLowerCase().includes(query);
+
+                return matchesCat && matchesStatus && matchesQuery;
+            });
+
+            renderTable(filtered);
+            updateBarChart(category);
+        }
+
+        function updateBarChart(category = 'ALL') {
+            const barTitle = document.getElementById('barChartTitle');
+            const barSub = document.getElementById('barChartSubtitle');
+
+            let chartItems = [];
+            if (category === 'ALL') {
+                barTitle.innerText = '카테고리별 통합 재고 수량 비교';
+                barSub.innerText = '전사 카테고리별 보유재고와 안전재고 합계 비교';
+                
+                const categories = ['전자기기', '사무용품', '소모품', '물류자재'];
+                const qtyData = categories.map(cat => rawData.filter(i => i.category === cat).reduce((acc, curr) => acc + curr.qty, 0));
+                const safeData = categories.map(cat => rawData.filter(i => i.category === cat).reduce((acc, curr) => acc + curr.safeQty, 0));
+
+                stockBarChartInstance.data.labels = categories;
+                stockBarChartInstance.data.datasets[0].data = qtyData;
+                stockBarChartInstance.data.datasets[1].data = safeData;
+            } else {
+                barTitle.innerText = `[${category}] 품목별 현재재고 vs 안전재고 비교`;
+                barSub.innerText = `선택된 ${category} 카테고리 세부 품목의 재고 수준 비교`;
+
+                chartItems = rawData.filter(i => i.category === category);
+                stockBarChartInstance.data.labels = chartItems.map(i => i.name.length > 10 ? i.name.substring(0, 10) + '...' : i.name);
+                stockBarChartInstance.data.datasets[0].data = chartItems.map(i => i.qty);
+                stockBarChartInstance.data.datasets[1].data = chartItems.map(i => i.safeQty);
+            }
+            stockBarChartInstance.update();
+        }
+
+        function initCharts() {
+            const categories = ['전자기기', '사무용품', '소모품', '물류자재'];
+            const categoryTotals = { '전자기기': 0, '사무용품': 0, '소모품': 0, '물류자재': 0 };
+
+            let grandTotal = 0;
+
+            rawData.forEach(item => {
+                const val = item.price * item.qty;
+                categoryTotals[item.category] += val;
+                grandTotal += val;
+            });
+
+            // 1. Category Asset Allocation Doughnut Chart
+            const ctx1 = document.getElementById('categoryChart').getContext('2d');
+            const catColors = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6'];
+
+            categoryChartInstance = new Chart(ctx1, {
+                type: 'doughnut',
+                data: {
+                    labels: categories,
+                    datasets: [{
+                        data: categories.map(c => categoryTotals[c]),
+                        backgroundColor: catColors,
+                        borderWidth: 2,
+                        borderColor: '#ffffff',
+                        hoverOffset: 8
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    onClick: (e, elements) => {
+                        if (elements.length > 0) {
+                            const index = elements[0].index;
+                            const selectedCat = categories[index];
+                            filterItems(selectedCat);
+                        }
+                    },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: '#0f172a',
+                            titleFont: { size: 13, weight: 'bold' },
+                            bodyFont: { size: 12 },
+                            padding: 12,
+                            cornerRadius: 8,
+                            callbacks: {
+                                label: function(context) {
+                                    const val = context.raw;
+                                    const pct = ((val / grandTotal) * 100).toFixed(1);
+                                    return ` 자산금액: ${val.toLocaleString()}원 (${pct}%)`;
+                                }
+                            }
+                        }
+                    },
+                    cutout: '70%'
+                }
+            });
+
+            // Build Custom Interactive Legend
+            const legendContainer = document.getElementById('chartLegend');
+            legendContainer.innerHTML = categories.map((cat, idx) => {
+                const pct = ((categoryTotals[cat] / grandTotal) * 100).toFixed(1);
+                return `
+                    <div onclick="filterItems('${cat}')" class="flex items-center justify-between p-2 rounded-xl bg-slate-50 hover:bg-blue-50 cursor-pointer border border-transparent hover:border-blue-200 transition-all">
+                        <div class="flex items-center gap-1.5">
+                            <span class="w-2.5 h-2.5 rounded-full inline-block" style="background-color: ${catColors[idx]}"></span>
+                            <span class="font-medium text-slate-700 text-xs">${cat}</span>
+                        </div>
+                        <span class="font-bold text-slate-900 font-mono text-xs">${pct}%</span>
+                    </div>
+                `;
+            }).join('');
+
+            // 2. Bar Chart for Item-level stock level comparison
+            const ctx2 = document.getElementById('stockBarChart').getContext('2d');
+            stockBarChartInstance = new Chart(ctx2, {
+                type: 'bar',
+                data: {
+                    labels: [],
+                    datasets: [
+                        {
+                            label: '현재 보유 수량',
+                            data: [],
+                            backgroundColor: '#2563eb',
+                            borderRadius: 6
+                        },
+                        {
+                            label: '적정 안전재고 수량',
+                            data: [],
+                            backgroundColor: '#cbd5e1',
+                            borderRadius: 6
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: '#0f172a',
+                            padding: 10,
+                            cornerRadius: 8,
+                            callbacks: {
+                                label: function(context) {
+                                    return ` ${context.dataset.label}: ${context.raw.toLocaleString()}개`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: { grid: { display: false }, ticks: { font: { size: 11 } } },
+                        y: { grid: { color: '#f1f5f9' }, beginAtZero: true }
+                    }
+                }
+            });
+
+            updateBarChart('ALL');
+        }
+
+        // Initialize App on DOM Content Loaded
+        window.onload = function() {
+            lucide.createIcons();
+            renderTable(rawData);
+            initCharts();
+        };
+    </script>
+</body>
+</html>
